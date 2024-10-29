@@ -1,0 +1,25 @@
+# mysql-replicaset.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: mysql-replicaset
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:mysql-image
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: "password"
+          - name: MYSQL_DATABASE
+            value: "employees"
+        ports:
+          - containerPort: 3306

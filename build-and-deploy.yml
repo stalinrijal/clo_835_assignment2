@@ -1,0 +1,133 @@
+name: Build, Push to ECR, and Deploy MySQL and Web App to EC2
+
+on:
+  push:
+    branches:
+      - main  # Adjust if you're using a different branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: dev  # Specify the environment
+
+    steps:
+      # Step 1: Checkout the repository code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Log in to AWS ECR
+      - name: Log in to AWS ECR
+        env:
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 251298034216.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      # Step 3: Build the MySQL Docker image
+      - name: Build MySQL Docker Image
+        run: |
+          docker build -t mysql-image -f mysql.Dockerfile .
+
+      # Step 4: Tag and Push the MySQL Docker image to the `ecr_for_assignment1` repository
+      - name: Tag and Push MySQL Image to ECR
+        run: |
+          docker tag mysql-image:latest 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:mysql-image
+          docker push 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:mysql-image
+
+      # Step 5: Build the Web App Docker image
+      - name: Build Web App Docker Image
+        run: |
+          docker build -t webapp-image -f Dockerfile .
+
+      # Step 6: Tag and Push the Web App Docker image to the `ecr_for_assignment1` repository
+      - name: Tag and Push Web App Image to ECR
+        run: |
+          docker tag webapp-image:latest 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+          docker push 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+
+      # # Step 7: Deploy MySQL and Web App Images to EC2 with Docker Network
+      # - name: Deploy to EC2
+      #   env:
+      #     AWS_REGION: us-east-1
+      #     EC2_IP: 3.85.45.147  # Your EC2 instance IP address
+      #   run: |
+      #     echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key.pem
+      #     chmod 600 private_key.pem
+          
+      #     ssh -i private_key.pem -o StrictHostKeyChecking=no ec2-user@${{ env.EC2_IP }} << 'EOF'
+      #       # Step 1: Configure AWS credentials
+      #       mkdir -p /home/ec2-user/.aws
+      #       echo "[default]" | sudo tee /home/ec2-user/.aws/config
+      #       echo "region = us-east-1" | sudo tee -a /home/ec2-user/.aws/config
+      #       echo "[default]" | sudo tee /home/ec2-user/.aws/credentials
+      #       echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}" | sudo tee -a /home/ec2-user/.aws/credentials
+      #       echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" | sudo tee -a /home/ec2-user/.aws/credentials
+      #       echo "aws_session_token = ${{ secrets.AWS_SESSION_TOKEN }}" | sudo tee -a /home/ec2-user/.aws/credentials
+
+      #       # Step 2: Add ec2-user to the Docker group and restart Docker
+      #       sudo usermod -aG docker ec2-user
+      #       sudo systemctl restart docker
+
+      #       # Step 3: Create a custom Docker network
+      #       docker network create --driver bridge my_custom_network || true
+
+      #       # Step 4: Log in to AWS ECR
+      #       aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 251298034216.dkr.ecr.us-east-1.amazonaws.com
+
+      #       # Step 5: Pull MySQL and Web App Images from ECR
+      #       docker pull 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:mysql-image
+      #       docker pull 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+
+      #       # Step 6: Run MySQL container
+      #       docker stop mysql-container || true
+      #       docker rm mysql-container || true
+      #       docker run -d --name mysql-container --network my_custom_network \
+      #         -e MYSQL_ROOT_PASSWORD=password \
+      #         -e MYSQL_DATABASE=employees \
+      #         251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:mysql-image
+
+      #       # Step 7: Run three web app containers with different colors and ports
+      #       docker stop app-pink || true
+      #       docker rm app-pink || true
+      #       docker run -d --name app-pink \
+      #         --network my_custom_network \
+      #         -p 8082:8080 \
+      #         -e DBHOST=mysql-container \
+      #         -e DBUSER=root \
+      #         -e DBPWD=password \
+      #         -e DATABASE=employees \
+      #         -e APP_COLOR=pink \
+      #         -e DBPORT=3306 \
+      #         251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+
+      #       docker stop app-blue || true
+      #       docker rm app-blue || true
+      #       docker run -d --name app-blue \
+      #         --network my_custom_network \
+      #         -p 8081:8080 \
+      #         -e DBHOST=mysql-container \
+      #         -e DBUSER=root \
+      #         -e DBPWD=password \
+      #         -e DATABASE=employees \
+      #         -e APP_COLOR=blue \
+      #         -e DBPORT=3306 \
+      #         251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+
+      #       docker stop app-lime || true
+      #       docker rm app-lime || true
+      #       docker run -d --name app-lime \
+      #         --network my_custom_network \
+      #         -p 8083:8080 \
+      #         -e DBHOST=mysql-container \
+      #         -e DBUSER=root \
+      #         -e DBPWD=password \
+      #         -e DATABASE=employees \
+      #         -e APP_COLOR=lime \
+      #         -e DBPORT=3306 \
+      #         251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+
+      #       # Step 8: Verify containers are running
+      #       docker ps
+      #     EOF

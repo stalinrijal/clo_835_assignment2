@@ -1,0 +1,31 @@
+# webapp-replicaset.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: webapp-replicaset
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - name: webapp
+        image: 251298034216.dkr.ecr.us-east-1.amazonaws.com/ecr_for_assignment1:webapp-image
+        env:
+          - name: DBHOST
+            value: "mysql-service"
+          - name: DBUSER
+            value: "root"
+          - name: DBPWD
+            value: "password"
+          - name: DATABASE
+            value: "employees"
+          - name: APP_COLOR
+            value: "pink"
+        ports:
+          - containerPort: 8080

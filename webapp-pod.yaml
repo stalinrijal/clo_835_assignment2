@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: webapp-pod
+  name: webapp-pod-2
   labels:
     app: webapp
 spec:
@@ -19,7 +19,7 @@ spec:
         - name: DATABASE
           value: "employees"
         - name: APP_COLOR
-          value: "pink"
+          value: "blue"
       ports:
         - containerPort: 8080
   imagePullSecrets:

@@ -1,0 +1,40 @@
+services:
+  webapp:
+    build: .
+    expose:
+      - "5000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mysql://myapp_user:myapp_password@db/myapp
+    deploy:
+      replicas: 3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: myapp_user
+      MYSQL_PASSWORD: myapp_password
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  loadbalancer:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - webapp
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
